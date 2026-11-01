@@ -202,8 +202,22 @@ def test_save_in_place(sample_pdf: Path):
     with PdfDocument(sample_pdf) as doc:
         doc.delete_info("Title")
         doc.save()
-    with PdfDocument(sample_pdf) as doc:
+        # Document stays usable after an in-place save (it is reopened).
         assert "Title" not in doc.info
+        assert doc.info["Author"] == "akiyama"
+        doc.delete_info("Author")
+        doc.save()
+    with PdfDocument(sample_pdf) as doc:
+        assert "Title" not in doc.info and "Author" not in doc.info
+    assert not list(sample_pdf.parent.glob(".cpp-*"))  # no temp files left behind
+
+
+def test_save_in_place_encrypted(encrypted_pdf: Path):
+    with PdfDocument(encrypted_pdf, password="owner") as doc:
+        doc.clear_all()
+        doc.save()
+        assert doc.encrypted and doc.info == {}
+    assert PdfDocument.verify_cleared(encrypted_pdf, password="owner") == {}
 
 
 def test_save_does_not_add_producer(plain_pdf: Path, tmp_path: Path):

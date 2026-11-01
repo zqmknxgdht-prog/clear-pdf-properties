@@ -63,8 +63,9 @@ class PdfDocument:
 
     def __init__(self, path: str | os.PathLike[str], password: str | None = None):
         self.path = Path(path)
+        self._password = password or ""
         try:
-            self._pdf = pikepdf.open(self.path, password=password or "")
+            self._pdf = pikepdf.open(self.path, password=self._password)
         except pikepdf.PasswordError as e:
             raise PasswordRequired(str(e)) from e
         except FileNotFoundError as e:
@@ -189,11 +190,14 @@ class PdfDocument:
     def save(self, out_path: str | os.PathLike[str] | None = None) -> Path:
         """Write the document (always a full rewrite). Returns the written path.
 
-        ``out_path=None`` overwrites the original file atomically.
+        ``out_path=None`` overwrites the original file atomically. In that case
+        the document is closed and reopened from the new file afterwards, because
+        Windows refuses to replace a file that is still open.
         """
         self._check_editable()
         target = Path(out_path) if out_path is not None else self.path
         target.parent.mkdir(parents=True, exist_ok=True)
+        in_place = target.resolve() == self.path.resolve()
         fd, tmp_name = tempfile.mkstemp(prefix=".cpp-", suffix=".pdf", dir=target.parent)
         os.close(fd)
         tmp = Path(tmp_name)
@@ -201,10 +205,17 @@ class PdfDocument:
             # encryption=True keeps the input's encryption (same passwords and
             # permissions); an unencrypted input stays unencrypted.
             self._pdf.save(tmp, deterministic_id=False, encryption=self.encrypted)
+            if in_place:
+                self._pdf.close()
             os.replace(tmp, target)
         except Exception:
             tmp.unlink(missing_ok=True)
+            if in_place:
+                self._pdf = pikepdf.open(self.path, password=self._password)
             raise
+        if in_place:
+            self._pdf = pikepdf.open(self.path, password=self._password)
+            self.incremental_updates = False
         self.dirty = False
         return target
 
