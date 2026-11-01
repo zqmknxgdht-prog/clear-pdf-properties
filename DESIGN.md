@@ -3,8 +3,8 @@
 PDF のプロパティ（メタデータ）を GUI で確認・クリア・書き換えるツール。
 Windows ユーザー向けに PyInstaller でビルドした実行ファイルを GitHub Release で配布する。
 
-- 状態: 確定（2026-11-01）
-- 決定事項は末尾「7. 決定事項」に集約
+- 状態: ドラフト（2026-11-01）
+- 未決事項は末尾「7. 未決事項」に集約
 
 ---
 
@@ -34,21 +34,20 @@ PDF の「プロパティ」は 1 か所ではなく複数の層に分かれて�
 - 日時（CreationDate / ModDate / xmp:CreateDate / xmp:ModifyDate / xmp:MetadataDate）の編集・削除
 - 保存は常に full rewrite（増分更新履歴を残さない）
 - 暗号化 PDF のパスワード入力（所有者パスワードが必要）
-- CLI（show / clear / set）。core を共有し、複数ファイル指定によるバッチ処理に対応
 - ヘッダに「暗号化の有無」「増分更新の有無」を表示
 
 ### 3.2 v1 で扱わないもの
 
 - 注釈作成者、添付ファイル、ページ単位 XMP、`/PieceInfo` の除去
 - `/ID` の再生成
-- GUI での複数ファイル処理（バッチは CLI で対応）
+- 複数ファイルのバッチ処理
 - コード署名・公証（配布上の制約として README に明記）
 
 ## 4. 技術選定
 
 | 項目 | 選定 | 理由 |
 |---|---|---|
-| 言語 | Python 3.11+ | 要望。PyInstaller 配布前提 |
+| 言語 | Python 3.10+ | 要望。PyInstaller 配布前提 |
 | PDF 処理 | pikepdf | Info と XMP の両方を扱える。保存が常に full rewrite。Win/mac/Linux の wheel あり |
 | GUI | Tkinter (ttk) | 標準ライブラリ。PyInstaller との相性が最も良く、exe が小さい（~20MB）。UI 要件（キー一覧＋ボタン＋折りたたみ）に対して十分 |
 | D&D | tkinterdnd2（任意） | ファイルを窓に落として開く。なくても「開く」ボタンで成立 |
@@ -71,8 +70,8 @@ PDF の「プロパティ」は 1 か所ではなく複数の層に分かれて�
 | OS | 位置づけ | 制約 |
 |---|---|---|
 | Windows | 一次ターゲット | コード署名なしのため SmartScreen 警告が出る。回避不可、README に記載 |
-| macOS | Release に添付（best effort） | 署名＋公証なしのため Gatekeeper に止められる。`xattr -d com.apple.quarantine` または右クリック→開く の手順と、ソースから `pipx run` する代替を README に記載 |
-| Linux | Release に添付（best effort） | glibc 依存のため古いディストリでは動かない可能性。同様にソース実行の代替を記載 |
+| macOS | best effort | 署名＋公証なしでは Gatekeeper により起動がほぼ不可。ソースから `pipx run` を案内する方が現実的 |
+| Linux | best effort | 配布形式が分散しているため同様にソース実行を案内 |
 
 ## 5. 画面設計
 
@@ -154,21 +153,6 @@ PDF の「プロパティ」は 1 か所ではなく複数の層に分かれて�
 - 開く時にパスワード入力ダイアログを表示
 - 所有者パスワードでない場合は編集不可である旨を表示し、閲覧のみ許可
 
-
-### 5.8 CLI
-
-```
-clear-pdf-properties show  <in.pdf>...
-clear-pdf-properties clear <in.pdf>... [-o out.pdf | --in-place] [--info-only | --xmp-only] [--keep KEY,...]
-clear-pdf-properties set   <in.pdf>    [-o out.pdf | --in-place] Title="..." Author="..." CreationDate="2026-10-30 14:02:11 +09:00"
-```
-
-- `show`：Info / XMP / 暗号化 / 増分更新の有無をテキストまたは `--json` で出力
-- `clear`：既定は Info と XMP の両方。複数ファイル指定時は `--in-place` か `--suffix _cleaned` で出力名を決める
-- `set`：GUI と同じ同期ルール（`--no-sync` で解除）、同じ日時フォーマット
-- 終了コード：0 成功 / 1 入力エラー / 2 保存後の検証で残存キーあり
-- 引数なしで起動した場合は GUI を開く（exe ダブルクリック対応）
-
 ## 6. 構成
 
 ```
@@ -181,8 +165,7 @@ clear-pdf-properties/
 │  │  └ dates.py        # 日時の相互変換とバリデーション
 │  ├ gui/
 │  │  └ app.py          # Tkinter
-│  ├ cli.py             # argparse。show / clear / set
-│  └ __main__.py        # 引数なし → GUI、引数あり → CLI
+│  └ __main__.py        # python -m clear_pdf_properties で GUI 起動
 ├ tests/                # フィクスチャ PDF はテスト内で生成（バイナリをリポジトリに置かない）
 ├ pyproject.toml
 ├ build/app.spec        # PyInstaller
@@ -197,8 +180,8 @@ clear-pdf-properties/
 
 - `document.py`：ファイルの開閉のみ。Info/XMP の操作は持たない
 - `info.py` / `xmp.py`：それぞれの層に閉じた read / set / delete
-- 同期ロジックは `xmp.py` の対応表を参照して GUI 層・CLI 層が呼び分ける
-- GUI / CLI は core の関数を呼ぶだけで、pikepdf を直接 import しない
+- 同期ロジックは `xmp.py` の対応表を参照して GUI 層（または将来の CLI 層）が呼び分ける
+- GUI は core の関数を呼ぶだけで、pikepdf を直接 import しない
 
 ### 6.2 テスト方針
 
@@ -213,11 +196,11 @@ clear-pdf-properties/
 3. 生成物を Release に添付（`clear-pdf-properties-<version>-<os>.zip`）
 4. README に SmartScreen / Gatekeeper の注意を記載
 
-## 7. 決定事項
+## 7. 未決事項
 
-| # | 項目 | 決定 | 日付 |
-|---|---|---|---|
-| 1 | GUI フレームワーク | Tkinter（見た目より配布の確実さを優先） | 2026-11-01 |
-| 2 | 「Info の編集を XMP に反映」の既定値 | ON | 2026-11-01 |
-| 3 | Release に含めるバイナリ | Windows / macOS / Linux。mac・Linux は best effort と README に明記 | 2026-11-01 |
-| 4 | CLI | v1 に含める（show / clear / set） | 2026-11-01 |
+| # | 項目 | 案 |
+|---|---|---|
+| 1 | GUI フレームワーク | Tkinter で進める（見た目より配布の確実さを優先） |
+| 2 | 「Info の編集を XMP に反映」の既定値 | ON |
+| 3 | macOS / Linux バイナリを Release に含めるか | 含めるが best effort と明記 |
+| 4 | CLI を v1 に含めるか | core があれば追加コストは小さい。要判断 |
