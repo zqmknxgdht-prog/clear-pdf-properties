@@ -11,7 +11,7 @@ PDF のプロパティは **Info 辞書** と **XMP** の 2 か所に入って�
 | OS | ファイル | 備考 |
 |---|---|---|
 | Windows | `clear-pdf-properties-vX.Y.Z-windows-x64.zip` | `clear-pdf-properties.exe`（GUI）と `clear-pdf-properties-cli.exe`（CLI） |
-| macOS | `...-macos-arm64.tar.gz` / `...-macos-x64.tar.gz` | best effort。下記の Gatekeeper 注意を参照 |
+| macOS | `...-macos-arm64.tar.gz` | Apple Silicon のみ、best effort。下記の Gatekeeper 注意を参照。Intel Mac はソースから実行 |
 | Linux | `...-linux-x64.tar.gz` | best effort。glibc 依存のため古い環境では動かないことがあります |
 
 ### Windows の SmartScreen 警告について

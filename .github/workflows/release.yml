@@ -17,8 +17,6 @@ jobs:
             label: windows-x64
           - os: macos-latest
             label: macos-arm64
-          - os: macos-13
-            label: macos-x64
           - os: ubuntu-latest
             label: linux-x64
     runs-on: ${{ matrix.os }}
